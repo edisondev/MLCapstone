@@ -64,7 +64,7 @@ for(i in 1:k) {
 ## 3rd  count how many reviews each user has in the data frame
 df=ddply(df,"userid", transform, rev_count=length(userid))
 
-save(df, file="review_data500.Rda")
+save(df, file="DAT_review_500.Rda")
 
 
 
