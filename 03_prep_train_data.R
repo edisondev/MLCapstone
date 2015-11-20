@@ -10,8 +10,8 @@ remove(dftest)
 library(plyr)
 dft=ddply(dftrain, ~userid, summarize, t(combn(review,2)))
 
-dft2=data.frame(rev1=dft$..1[1], 
-                rev2=dft$..1[2], 
+dft2=data.frame(rev1=dft$..1[,1], 
+                rev2=dft$..1[,2], 
                 same=as.logical(numeric(length = nrow(dft))+1),
                 user1=dft$userid,
                 user2=dft$userid,
@@ -39,9 +39,12 @@ while (p < entries){
   }
 }
 
+#Append the dft2 and dft3
+dfm=rbind(dft2,dft3)
+
 
 #Save dft2 and dft3 to the save file
-save(dft2,dft3, file="DAT_train_data.Rda")
+save(dfm, file="DAT_train_data.Rda")
 
 
 #For testing of code

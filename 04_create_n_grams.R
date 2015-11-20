@@ -22,7 +22,7 @@ print(Sys.time () - start)
 #lapply(profile, head, 10L) #see top 10
 
 table_feature_space <- as.matrix(profile) #convert the text to feature place
-table_feature_space=table_feature_space[,1:2000] #Greater than 500
+table_feature_space=table_feature_space[,1:1000] #Greater than 500
 features_ordered=table_feature_space[order(names(table_feature_space))] #sort alphabetically
 
 funi=names(features_ordered) #Sorted feature universe
@@ -32,9 +32,9 @@ funi=names(features_ordered) #Sorted feature universe
 #Append feature vector to each entry in data.frame of training data
 load(file="DAT_train_data.Rda")
 
-#Pick 2000 True values and 2000 FALSE values
-nt=4000
-nf=4000
+#Pick 10000 True values and 2000 FALSE values
+nt=10000
+nf=10000
 
 indt=sample(c(1:50000), nt, replace=FALSE)
 indf=sample(c(60000:72377), nf, replace=FALSE)
@@ -43,11 +43,12 @@ indc=indc[sample(c(1:(nt+nf)), (nt+nf), replace=FALSE)]
 dfms=dfm[indc,]
 
 hist_diff=matrix(data=0,nrow=nrow(dfms),ncol=length(funi), dimnames=list(1:nrow(dfms),funi)) #create empty hist
-#hist_diff=matrix(data=0,nrow=1,ncol=length(funi)) #create empty hist
+
+source("calc_histogram.R")
 
 for (i in c(1:nrow(dfms)) ) {
-  nhist1=n.gram.histogram(dfm$rev1[i],n=4,size=100000,funi)
-  nhist2=n.gram.histogram(dfm$rev2[i],n=4,size=100000,funi)
+  nhist1=n.gram.histogram(dfm$rev1[i],n=4,size=10000,funi)
+  nhist2=n.gram.histogram(dfm$rev2[i],n=4,size=10000,funi)
   
   hist_diff[i,]=abs(nhist1/sum(nhist1) - nhist2/sum(nhist2))
   
