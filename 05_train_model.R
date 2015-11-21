@@ -6,8 +6,8 @@ load(file="DAT_train_data_main.Rda")
 library("e1071")
 dfms$same=factor(dfms$same)
 
-n_examples=2000
-n_features=2000
+n_examples=5000
+n_features=1000
 
 hist_diff=as.data.frame(hist_diff)
 hist_diff$same=dfms$same
@@ -42,21 +42,26 @@ plot(dat.pca,type = "l")
 sink(file='pca.txt')
 summary(dat.pca)
 sink()
+n=625 #number of pca components
+
+ndfs=data.frame(dat.pca$x[,1:n])
+ndfs$same=hds$same
+
+ndfp=data.frame( predict(dat.pca, newdata=hdp)[,1:n] )
+ndfp$same=hdp$same
 
 
 #Model#1
 start <- Sys.time ()
-model1 <- svm(same~., data=hds,
-              kernel="linear",
-              cost=1000,
-              scale=TRUE)
+model1 <- svm(same~., data=ndfs)
 print(Sys.time () - start)
 
-p=predict(model1,newdata = hdp )
-sum(p==hdp$same)/nrow(hdp)*100
-table(pred=p, true=hdp$same)
+p=predict(model1,newdata = ndfp )
+sum(p==ndfp$same)/nrow(ndfp)*100
+table(pred=p, true=ndfp$same)
 
 
+model2 <- tune.svm(same~., data=ndfs)
 #save(model1,res1, file="DAT_model1.Rda")
 # 
 # #Model#2
@@ -95,3 +100,88 @@ table(pred=p, true=hdp$same)
 # sum(p==hdp$same)/nrow(hdp)*100
 # table(pred=p, true=hdp$same)
 # #save(model4,res4,t4, file="DAT_model4.Rda")
+
+#r-bloggers the 5th tribe SVM
+library(caret)
+library(dplyr)
+library(kernlab)
+
+n_features=5000
+
+load(file="DAT_train_data_main.Rda")
+
+dfms$same=factor(dfms$same)
+hist_diff=as.data.frame(hist_diff)
+hist_diff$same=dfms$same
+
+k=apply(hist_diff[1:(ncol(hist_diff)-1)], 2, var)
+#Check that all n-grams have variance and remove those that don't
+#Otherwise problems with scaling
+if( sum(k==0)>0 ) {
+  ind_gone=which(k==0)
+  hist_diff=hist_diff[,-ind_gone]
+  n_features=n_features-length(n_gone)
+}
+
+
+trainIndex=createDataPartition(hist_diff$same,p=.1, list=FALSE)
+trainData=hist_diff[trainIndex,c(1:n_features,ncol(hist_diff))]
+testData=hist_diff[-trainIndex,c(1:n_features, ncol(hist_diff))]
+
+trainX=trainData[,1:n_features]
+set.seed(1492)
+
+ctrl=trainControl(method = "cv", number = 1)
+
+start <- Sys.time ()
+svm.tune=train(x=trainX, y=trainData$same, preProcess=c("pca","center","scale"),
+               method="svmRadial", trControl=ctrl)
+print(Sys.time () - start)
+beep()
+
+
+
+
+
+
+
+# 
+# #Sample Data
+# 
+# 
+# df=data.frame(n1=c(rep(1,1000), rep(0,1000))+rnorm(2000,0,0.4),
+#               n2=c(rep(0.1,1000), rep(0.2,1000))+rnorm(2000,0,0.4),
+#               y=c(rep(1,1000), rep(0,1000)))
+#               
+# df$y=factor(df$y)
+#        
+# trainIndex=createDataPartition(df$y,p=.5, list=FALSE)
+# trainData=df[trainIndex,]
+# testData=df[-trainIndex,]
+# 
+# trainX=trainData[,1:2]
+# ctrl <- trainControl(method="repeatedcv",   # 10fold cross validation
+#                      repeats=5,  	    # do 5 repititions of cv
+#                      summaryFunction=twoClassSummary,	# Use AUC to pick the best model
+#                      classProbs=TRUE)
+# 
+# grid <- expand.grid(sigma = c(.01, .015, 0.2),
+#                     C = c(0.75, 0.9, 1, 1.1, 1.25))
+# 
+# start <- Sys.time ()
+# 
+# svm.tune <- train(x=trainX,
+#                   y= trainData$y,
+#                   method = "svmRadial",
+#                   preProc = c("center","scale"),
+#                   metric="ROC",
+#                   tuneGrid = grid,
+#                   trControl=ctrl)
+# 
+# print(Sys.time () - start)
+# beep()
+# svm.tune
+# 
+# p=predict(svm.tune, newdata=testData[,1:2])
+# confusionMatrix(p, trainData$y, positive="1")
+# sum(p==trainData$y)/nrow(trainData)*100

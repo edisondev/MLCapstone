@@ -22,7 +22,7 @@ print(Sys.time () - start)
 #lapply(profile, head, 10L) #see top 10
 
 table_feature_space <- as.matrix(profile) #convert the text to feature place
-table_feature_space=table_feature_space[,1:1000] #Greater than 500
+table_feature_space=table_feature_space[,1:5000] #Greater than 500
 features_ordered=table_feature_space[order(names(table_feature_space))] #sort alphabetically
 
 funi=names(features_ordered) #Sorted feature universe
@@ -33,8 +33,8 @@ funi=names(features_ordered) #Sorted feature universe
 load(file="DAT_train_data.Rda")
 
 #Pick 10000 True values and 2000 FALSE values
-nt=10000
-nf=10000
+nt=1000
+nf=1000
 
 indt=sample(c(1:50000), nt, replace=FALSE)
 indf=sample(c(60000:72377), nf, replace=FALSE)
