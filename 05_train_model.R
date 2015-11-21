@@ -115,7 +115,7 @@ hist_diff=as.data.frame(hist_diff)
 hist_diff$same=dfms$same
 
 
-trainIndex=createDataPartition(hist_diff$same,p=.7, list=FALSE)
+trainIndex=createDataPartition(hist_diff$same,p=.07, list=FALSE)
 trainData=hist_diff[trainIndex,]
 testData=hist_diff[-trainIndex,]
 
@@ -147,15 +147,15 @@ if( sum(k==0)>0 ) {
 set.seed(1492)
 
 ctrl=trainControl(method = "repeatedcv",
-                  repeats=3)#,        # do 5 repititions of cv
+                  repeats=5)#,        # do 5 repititions of cv
                   #summaryFunction=twoClassSummary,	# Use AUC to pick the best model
                   #classProbs=TRUE)
 
 nf=n_features
 
 start <- Sys.time ()
-svm.tune=train(x=trainX[,1:nf], y=trainData$same, preProcess=c("pca","center","scale"),
-               method="svmRadial", trControl=ctrl)
+svm.tune=train(x=trainX[,1:nf], y=trainData$same, preProcess=c("center","scale"),
+               method="svmLinear", trControl=ctrl)
 print(Sys.time () - start)
 library(beepr)
 beep()
