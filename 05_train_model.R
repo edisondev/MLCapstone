@@ -101,45 +101,71 @@ model2 <- tune.svm(same~., data=ndfs)
 # table(pred=p, true=hdp$same)
 # #save(model4,res4,t4, file="DAT_model4.Rda")
 
-#r-bloggers the 5th tribe SVM
 library(caret)
 library(dplyr)
 library(kernlab)
 
-n_features=5000
+
 
 load(file="DAT_train_data_main.Rda")
+n_features=ncol(hist_diff)
 
 dfms$same=factor(dfms$same)
 hist_diff=as.data.frame(hist_diff)
 hist_diff$same=dfms$same
 
-k=apply(hist_diff[1:(ncol(hist_diff)-1)], 2, var)
+
+trainIndex=createDataPartition(hist_diff$same,p=.7, list=FALSE)
+trainData=hist_diff[trainIndex,]
+testData=hist_diff[-trainIndex,]
+
+trainX=trainData[,1:n_features]
+
+
+#Check for zero columns and remove them
+if( sum(colSums(trainX)==0)!=0 ) {
+  ind_gone=which(colSums(trainX)==0)
+  trainX=trainX[,-ind_gone]
+  trainData=trainData[,-ind_gone]
+  testData=testData[,-ind_gone]
+  n_features=n_features-length(ind_gone)
+}
+
+k=apply(trainX, 2, var)
 #Check that all n-grams have variance and remove those that don't
 #Otherwise problems with scaling
 if( sum(k==0)>0 ) {
   ind_gone=which(k==0)
-  hist_diff=hist_diff[,-ind_gone]
-  n_features=n_features-length(n_gone)
+  trainX=trainX[,-ind_gone]
+  trainData=trainData[,-ind_gone]
+  testData=testData[,-ind_gone]
+  n_features=n_features-length(ind_gone)
 }
 
 
-trainIndex=createDataPartition(hist_diff$same,p=.1, list=FALSE)
-trainData=hist_diff[trainIndex,c(1:n_features,ncol(hist_diff))]
-testData=hist_diff[-trainIndex,c(1:n_features, ncol(hist_diff))]
 
-trainX=trainData[,1:n_features]
 set.seed(1492)
 
-ctrl=trainControl(method = "cv", number = 1)
+ctrl=trainControl(method = "repeatedcv",
+                  repeats=3)#,        # do 5 repititions of cv
+                  #summaryFunction=twoClassSummary,	# Use AUC to pick the best model
+                  #classProbs=TRUE)
+
+nf=n_features
 
 start <- Sys.time ()
-svm.tune=train(x=trainX, y=trainData$same, preProcess=c("pca","center","scale"),
+svm.tune=train(x=trainX[,1:nf], y=trainData$same, preProcess=c("pca","center","scale"),
                method="svmRadial", trControl=ctrl)
 print(Sys.time () - start)
+library(beepr)
 beep()
+svm.tune
 
+p=predict(svm.tune, newdata=trainX[,1:nf])
+confusionMatrix(p, trainData$same)
 
+p=predict(svm.tune, newdata=testData[,1:nf])
+confusionMatrix(p, testData$same)
 
 
 
