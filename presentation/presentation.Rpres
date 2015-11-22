@@ -1,0 +1,54 @@
+Classifying Multiple Authors from two Yelp User Reviews
+========================================================
+author: NK
+date: 2015-11-22
+Can we determine if two 500 word reviews were written by the same author?
+
+
+Features
+========================================================
+Data preparation:
+- Collect all authors that wrote >2 reviews with 500 words
+- Create n-gram feature universe (take 3000 most common for n=4)
+- Use td*idf to account for imbalance
+- Split data by authors: (1000 training, 500 validation, 1455 testing)
+- Define features as difference of two histograms: $diff(hist_1, hist_2)=|hist_1-hist_2|$
+
+Exploration and Training
+========================================================
+- Becuase there was a poor linear correlation (see figure), a radial basis function SVM was used.
+- Grid search was used via `tuneGrid = expand.grid(C = c(0.1,0.5,1),sigma=c(.01,.1,1)`
+```{r,echo=FALSE, fig.height=4}
+#Plot Correlation
+load(file="DAT_report2.Rda")
+hist(cor(trainX, as.numeric(trainData$same)),
+     breaks=50,
+     main="Fig2: Features-Prediction Correlation",
+     xlab="Linear Correlation",
+     col="red")
+```
+
+
+Confusion Matrix Results
+========================================================
+
+- Training data for a *svmRadial* predictor (1000 samples, C=0.1, C=1) Accuracy =100%:
+```{r, echo=FALSE}
+load(file="DAT_report3.RDa")
+ktrain$table
+```
+
+- Test data results (Accuracy ~= 50% i.e. random gueassing)
+```{r,echo=FALSE}
+load(file="DAT_report3.RDa")
+ktest$table
+```
+-All trained methods attempted were a poor predictor
+
+Discussion
+========================================================
+- Over-fitting was ruled out by running a grid search the accuracy always ~50% (random guessing).
+- More training data avaiable, but requires huge additional computation time.
+- Low correlation between the features and the output and large accuracy difference between training and test data means two things:
+  1. More training samples are needed.
+  2. No relationship between features and output.

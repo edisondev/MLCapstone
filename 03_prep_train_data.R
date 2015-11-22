@@ -8,7 +8,9 @@ remove(dftest)
 
 #Create a combination of all pairs that are EQUAL
 library(plyr)
-dft=ddply(dftrain, ~userid, summarize, t(combn(review,2)))
+dft=ddply(dftrain, ~userid, summarize, t(combn(review,2)) )
+
+
 
 dft2=data.frame(rev1=dft$..1[,1], 
                 rev2=dft$..1[,2], 
@@ -34,7 +36,8 @@ while (p < entries){
                   dftrain$review[k[2]],
                   same=F,
                   dftrain$userid[k[1]],
-                  dftrain$userid[k[2]])
+                  dftrain$userid[k[2]]
+                  )
     p=p+1 #increment index
   }
 }

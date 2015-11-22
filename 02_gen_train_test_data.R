@@ -4,7 +4,7 @@ setwd("C:\\Users\\N\\Dropbox\\Coursera\\10 - Capstone Design Project\\yelp_datas
 
 
 #Load the reviews with greater than 500 words
-load(file="review_data500.Rda")
+load(file="DAT_review_500.Rda")
 
 #Remove users with only one 500 word review
 df2=df[df$rev_count>1,]

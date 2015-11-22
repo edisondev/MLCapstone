@@ -2,31 +2,132 @@
 title: "Classifying Multiple Authors for the Same Yelp User Account"
 author: "NK"
 date: "Saturday, November 21, 2015"
-output: html_document
+output: pdf_document
 ---
 
-# Introduction
+## Abstract
+This work focussed on identifying if a piece of text was written by the same author, using the Yelp 
+Dataset. Yelp data was used, because it cosnsisted of 1.5 million user reviews and gave a wealth of 
+text, while also being intrested in fraud detection. The method in this work used n-gram histogram 
+frequencies to try and differentiate between same and different author pairs. The method in this work 
+ended up not working and explanation and recommendation was provided.
 
 
-# Method
+#1. Introduction
+Yelp is a website based on user reviews and reputation and would suffer greatly if fraud was 
+prevalent. One way of committing fraud is to have multiple people write for a single account in order 
+to create a "trust-worthy" user network or some sort of user network with many reviews. These networks 
+can then influence portions of the Yelp brand. Sometimes, external authors are hired because there is a lot of work involved in writing trust-worthy and believable reviews.
+This work will try to answer the question: **Is it possible to classify two separate 500 word review snippets as "same author" or "different authors"?**
 
-# Results
+This work will use methods from the field of authorship detection . The Yelp dataset is perfect for 
+this work, because it contains highly varied authors and many examples. Once a classifier has been 
+trained to differentiate "same" or "different" authors it can be used to flag suspiciuos accounts.
 
-#Discussion
--4 grams really good at differentiating different languages, but may not be 
--never explicitly stated that the documents were in English
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Unfortunately this work was not entirely succesful, due to time and computation constraints. The 
+method, the results, and a discussion on where this project is headed next will follow. Code snippets 
+will be kept to a minimum in this report and can be found on the Github repository.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+#2 Method
+##2.1 Getting and Cleaning Data
+The entire dataset is taken from the *yelp_academic_dataset_review.json* file. The *jsonlite*package 
+was used to extract and store those reviews that met the following criterion: *the same user must have two or more reviews with length over 500 words* The code for this feature extraction is located in the file *01_read_reviews.R*.
 
-```{r}
-summary(cars)
+##2.2 Spearation of Training, Validation, and Testing Data
+The total number of reviews with users having 2 or more reviews was 14,175 from 2,955 unique users. These were separated into trainign, validation, and testing data based on the users. On average, the data gave 4.7 reviews per user. The data was separated into training (1000 users), validation (500 users), and testing (1455 users). The code for this procedure is located in *02_gen_train_test_data.R*.
+
+##2.3 Pairing User Reviews
+The next step was to pair reviews and label them as "same author" and "different author". The pairing was done via the *ddply* function to summarize all the combination of the same reviews written by the same user. The 5,000 reviews from 1,000 users in the training data generated 56,626 combinations of "same author" feature pairs. The code is located in the  file *03_prep_train_data.R*. 
+
+##2.4 Feature Extraction and Exploratory Analysis
+
+###2.4.1 Feature Universe
+The work in this project was based on published procedure called "Determining if two documents are 
+written by the same author" by Koppel and Winter. This project used n-grams as the features. n-grams 
+are sequences of n characters or spaces in various combinations that are extracted from the text.  The 
+work by Koppel and Winter used 4-grams and cites other work that shows highly beneficial properties. 
+For example the sentence *"I am going biking"* has the following n-gram histogram:
+```{r,warning=FALSE}
+library(textcat)
+prof=textcat_profile_db("I am going biking",options=c("n"=4,"reduce"=TRUE))
+ as.matrix(prof)
+```
+The feature universe are all the n-grams that will be considered for prediction. All of the training reviews were appended into a string and the 4-grams were extracted from it. This made up the feature universe. 
+```{r,eval=FALSE}
+text=paste0(dftrain$review, sep=" ", collapse="") #Append all reviews
+
+#Extract all 4-grams from text variable
+profile=textcat_profile_db(text,
+                     options=c("n"=4, #Use 4-grams 
+                               "size"=100000,  #Maximum 100,000 different n-grams per
+                               "reduce"=TRUE)) #Reduce multiple spaces to just one
+
+table_feature_space <- as.matrix(profile) #convert the text to feature place
+
+```
+The result was 29,425 different 4-grams. Not all of these will be useful features because they will be too rare. Therefore we only take the 3000 most common 4-grams. The four most common n-grams are *ing_*, *_to_*, *_of_*, and *_the*. The distribution is shown in Figure 1 (ignoring the top 22 n-grams).
+
+```{r,echo=FALSE,fig.width=5, fig.height=3.5, fig.align='center'}
+load(file="DAT_report1.Rda")
+hist(table_feature_space[table_feature_space<15000],
+     breaks=100,
+     main="Fig1: Histogram of Feature  Universe (n-gram, n=4)",
+     xlab="",
+     ylab="Number of n-grams"
+     )
+```
+The histogram in Figure 1 is highly skewed so we want to correct for that using the $tf*idf$ method. The resulting distribution will still be skewed, but more weight will be given to rarer features. The term fre quency $tf$ is the count of how much each feature shows up in the review. The inverse document frquency $tdf$ is corrects for the fact that some features are very frequenct in text and do not add any information.The $tdf$ is defined as $tdf(t,D)=log( \frac{N}{(d\in D)})$ where $N$ is the number of documents and is divided by $d \in D$, which is the number of documents that contain that n-gram.
+
+###2.4.2 Prediction Features
+Since we are intreseted in determining if two reviews came from the same author, we look at the difference in histograms. 
+
+We have review1 with vector histogram $X$ and review2 with vector histogram $Y$. We calculate  features as $diff(X)=|X-Y|$. We also assign a variables called *same* which is *TRUE* if the author is the same or *FALSE* if they are not. Now the task becomes to learn whether the differences in histogram can predict the *same* variable. The procedure is found in the file *04_create_n_grams.R*. Figure 2 shows the correlation between the histogram differences and the *same* variable. There is only a very weak linear correlation, but published work showed promising results, thereforea a nonlinear predictor will be tried.
+
+```{r,echo=FALSE,fig.width=5, fig.height=3.5}
+#Plot Correlation
+load(file="DAT_report2.Rda")
+hist(cor(trainX, as.numeric(trainData$same)),
+     breaks=50,
+     main="Fig2: Features-Prediction Correlation",
+     xlab="Linear Correlation",
+     col="red")
+
 ```
 
-You can also embed plots, for example:
 
+
+##2.5 Training
+Two different classifiers were used. The random forrest (`method="rf"`) and the support vector machine with the radial basis function (`method="svmRadial"`)  were considered.
+The *tuneGrid* option (`tuneGrid = grid` where (`grid <- expand.grid(C = c(0.01,1,5),sigma=c(.001,.01,0.5)`) was also used for training to try and tune the optimal parameters. The code for training is located in *05_train_model.R*.
+
+
+
+#3 Results
+Over the weeks, dozens of combinations of cross-validation, number of features, training models, and training parameters were run with the nearly the same results. However no successful classification model was found. The main issue was good accuracy on training data and random-guessing accuracy on test data.
+
+**Due to report length constraints only one sample result is shown**, which is however very representative of the models that were trained. The following confusion matrix shows the results on the training data for a *svmRadial* predictor:
 ```{r, echo=FALSE}
-plot(cars)
+load(file="DAT_report3.RDa")
+ktrain$table
+ktrain$byClass
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+The following confusion matrix shows that predictor applied to the test data.
+```{r,echo=FALSE}
+load(file="DAT_report3.RDa")
+ktest$table
+ktest$byClass
+```
+
+Given the results obtained in this report, I was unable to predict using 4-grams whether a 500 word review was written by the same author.
+
+
+#4 Discussion
+I was unable to predict whether a 500 word review was written by the same author using n-grams.
+Given the large difference in prediction accuracy on test and train data, there is a few points that can be made:
+
+* The issue of over-fitting was ruled out by running a grid search on the trianing parameters `C` and `sigma` for the SVM radial basis function. No matter the parameter combination, the accuracy always ~50% (random guessing).
+* More training data was avaiable but could not be used, because the trianing time significantly increased with more samples. However even after running the training for 1 day, the accuracy still ended up being 50%. For the future, I am considering renting an Amazon EC server and trying it on a very fast server.
+* The paper that this work is based on never explicitly states that the languages were all the same. n-grams are excellent features to differentiate different languages but may not be ideal for differentiating text snippets in the same language.
+* Given the low correlation between the features and the output, there might also be a good chance that these features are simply not appropriate to predict whether a piece of text was written by the same author or not.
+
